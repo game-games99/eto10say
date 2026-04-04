@@ -1,639 +1,341 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>アビスコレクション</title>
-    <link rel="stylesheet" href="css/style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
-  </head>
-  <body>
-    <div class="game-container">
-      <div class="title-area">
-        <div class="floor-jump">
-          <select id="floorJumpSelect"></select>
-          <button id="floorJumpBtn">移動</button>
-          <label class="stay-label">
-            <input type="checkbox" id="stayOnFloorChk">
-            とどまる
-          </label>
-        </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>アビスコレクション</title>
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+
+  <style>
+    /* --- CSS Style --- */
+    :root {
+      --bg-color: #121212;
+      --panel-color: #1e1e1e;
+      --card-color: #2a2a2a;
+      --text-color: #e0e0e0;
+      --accent-color: #4a90e2;
+      --danger-color: #e74c3c;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      line-height: 1.4;
+    }
+
+    .game-container {
+      width: 100%;
+      max-width: 480px;
+      padding: 10px;
+      box-sizing: border-box;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ステータス周り */
+    .status-panel { margin-top: 10px; }
+    .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .status-card {
+      background: var(--card-color);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+    .status-card-label { font-size: 10px; color: #888; font-weight: bold; }
+
+    /* アクションボタン */
+    .action-panel { margin-top: 15px; }
+    .action-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: opacity 0.2s;
+    }
+    button:active { opacity: 0.7; }
+
+    .action-row-attack button {
+      width: 100%;
+      padding: 16px;
+      background: var(--accent-color);
+      color: white;
+      font-size: 18px;
+    }
+
+    .main-nav-btn {
+      flex: 1;
+      padding: 12px;
+      background: #333;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .sub-nav-btn {
+      flex: 1;
+      padding: 8px;
+      background: #222;
+      color: #ccc;
+      font-size: 12px;
+    }
+
+    /* ログ */
+    .log-panel {
+      flex-grow: 1;
+      height: 120px;
+      overflow-y: auto;
+      background: #000;
+      padding: 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      border: 1px solid #333;
+    }
+
+    /* モーダル */
+    .book-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .hidden { display: none !important; }
+
+    .book-modal {
+      background: var(--panel-color);
+      width: 90%;
+      max-height: 85%;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .book-header {
+      padding: 15px;
+      background: #252525;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+    }
+    .panel-modal-body { padding: 15px; overflow-y: auto; flex-grow: 1; }
+
+    /* 経験値バー */
+    #expContainer {
+      width: 100%; height: 6px; background: #333;
+      border-radius: 3px; margin-top: 4px; overflow: hidden;
+    }
+    #expBar { width: 0%; height: 100%; background: #4caf50; transition: width 0.3s; }
+
+    .level-floor-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="title-area">
+      <div class="floor-jump">
+        <select id="floorJumpSelect"><option>B1F</option></select>
+        <button id="floorJumpBtn" style="padding:2px 8px;">移動</button>
+        <label class="stay-label" style="font-size:12px; margin-left:5px;">
+          <input type="checkbox" id="stayOnFloorChk"> とどまる
+        </label>
       </div>
-      <div id="playerLevelExp">
-        <div class="level-floor-row">
-          <span id="playerLevel">Lv.1</span>
-          <span id="floorDisplay">地下1階</span>
-        </div>
-        <div id="expContainer">
-          <div id="expBar"></div>
-        </div>
+    </div>
+
+    <div id="playerLevelExp">
+      <div class="level-floor-row">
+        <span id="playerLevel">Lv.1</span>
+        <span id="floorDisplay">地下1階</span>
       </div>
-      <div class="status-panel">
-        <div class="status-grid">
-          <div class="player-status status-card">
-            <div class="status-card-label">PLAYER</div>
-            <p id="playerHp"></p>
-            <p id="playerAttack"></p>
+      <div id="expContainer">
+        <div id="expBar"></div>
+      </div>
+    </div>
+
+    <div class="status-panel">
+      <div class="status-grid">
+        <div class="player-status status-card">
+          <div class="status-card-label">PLAYER</div>
+          <p id="playerHp" style="margin:4px 0;">HP: 100/100</p>
+          <p id="playerAttack" style="margin:4px 0;">ATK: 10</p>
+        </div>
+        <div class="enemy-status status-card">
+          <div class="enemy-name-row">
+            <span class="status-card-label">ENEMY</span>
+            <p id="enemyName" style="margin:4px 0; color:#ffb74d;">スライム</p>
           </div>
-          <div class="enemy-status status-card">
-            <div class="enemy-name-row">
-              <span class="status-card-label">ENEMY</span>
-              <p id="enemyName"></p>
-            </div>
-            <p id="enemyHp"></p>
-          </div>
-        </div>
-      </div>
- 
-      <div class="action-panel">
-        <div class="action-row action-row-attack">
-          <button id="attackBtn">攻撃</button>
-        </div>
-        <!-- 装備・ペット：大ボタン行 -->
-        <div class="action-row action-row-main">
-          <button id="petToggleBtn" class="main-nav-btn">
-            <span class="nav-icon">🐾</span>
-            <span class="nav-label">ペット</span>
-          </button>
-          <button id="inventoryToggleBtn" class="main-nav-btn">
-            <span class="nav-icon">📦</span>
-            <span class="nav-label">インベントリ</span>
-          </button>
-        </div>
-        <!-- 図鑑・状態・その他：小ボタン行 -->
-        <div class="action-row action-row-sub">
-          <button id="bookBtn" class="sub-nav-btn">
-            <span class="nav-icon">📖</span>
-            <span class="nav-label">図鑑</span>
-          </button>
-          <button id="statusBtn" class="sub-nav-btn">
-            <span class="nav-icon">📊</span>
-            <span class="nav-label">ステータス</span>
-          </button>
-          <button id="moreBtn" class="sub-nav-btn">
-            <span class="nav-icon">⋯</span>
-            <span class="nav-label">その他</span>
-          </button>
-        </div>
-      </div>
- 
-      <div id="log" class="log-panel"></div>
- 
-    </div>
- 
-    <!-- インベントリモーダル -->
-    <div id="inventoryOverlay" class="book-overlay hidden">
-      <div class="book-modal panel-modal">
-        <div class="book-header">
-          <span>装備</span>
-          <button id="inventoryCloseBtn">✕</button>
-        </div>
- 
-        <!-- 装備中武器サマリー（常時表示） -->
-        <div id="equippedWeaponInfo" class="equipped-summary"></div>
- 
-        <!-- タブ -->
-        <div class="inv-tabs">
-          <button id="invTabWeapon" class="inv-tab active">⚔️ 武器</button>
-          <button id="invTabGem"    class="inv-tab">💎 宝玉</button>
-        </div>
- 
-    <!-- ツールバー（panel-modal-bodyの外に移動） -->
-    <div class="inventory-toolbar" id="invWeaponToolbar">
-      <div class="toolbar-row1">
-        <select id="inventoryFilterSelect"><option value="">すべて</option></select>
-        <button id="selectAllBtn">一括選択</button>
-      </div>
-      <div class="toolbar-row-search">
-        <input type="text" id="inventoryNameInput" class="toolbar-search-input" placeholder="名前で検索...">
-        <button id="inventorySearchBtn" class="toolbar-search-btn">検索</button>
-      </div>
-      <div class="toolbar-row2">
-        <label class="toolbar-label">グループ順</label>
-        <select id="weaponGroupSortSelect">
-          <option value="acquiredDesc">獲得降順</option>
-          <option value="acquiredAsc">獲得昇順</option>
-          <option value="bookAsc">図鑑昇順</option>
-          <option value="bookDesc">図鑑降順</option>
-        </select>
-        <label class="toolbar-label">アイテム順</label>
-        <select id="weaponSortSelect">
-          <option value="atk">攻撃力</option>
-          <option value="hp">HP</option>
-          <option value="passive">スキル値</option>
-        </select>
-      </div>
-    </div>
- 
-        <!-- 武器タブ（リストのみ） -->
-        <div id="invWeaponSection" class="panel-modal-body">
-          <div id="synthesisInfo" class="synth-hint hidden"></div>
-          <div id="synthesisPreview"></div>
-          <ul id="inventoryList"></ul>
-        </div>
- 
-        <!-- 宝玉タブ -->
-        <div id="invGemSection" class="panel-modal-body hidden">
-          <div id="gemBonusSummary" class="gem-bonus-summary"></div>
-          <ul id="gemList"></ul>
-        </div>
- 
-        <!-- 合成ボタン（モーダル下部に固定） -->
-        <div class="panel-modal-footer">
-          <button id="synthesizeBtn">合成する</button>
+          <p id="enemyHp" style="margin:4px 0;">HP: 20/20</p>
         </div>
       </div>
     </div>
- 
-    <!-- ペットモーダル -->
-    <div id="petOverlay" class="book-overlay hidden">
-      <div class="book-modal panel-modal">
-        <div class="book-header">
-          <span>ペット</span>
-          <button id="petCloseBtn">✕</button>
-        </div>
- 
-        <!-- 装備中ペットサマリー（常時表示） -->
-        <div id="equippedPetInfo" class="equipped-summary"></div>
- 
-        <!-- ツールバー（panel-modal-bodyの外に移動） -->
-        <div class="inventory-toolbar">
-          <div class="toolbar-row1">
-            <select id="petFilterSelect"><option value="">すべて</option></select>
-            <button id="petSelectAllBtn">一括選択</button>
-          </div>
-          <div class="toolbar-row-search">
-            <input type="text" id="petNameInput" class="toolbar-search-input" placeholder="名前で検索...">
-            <button id="petSearchBtn" class="toolbar-search-btn">検索</button>
-          </div>
-          <div class="toolbar-row2">
-            <label class="toolbar-label">グループ順</label>
-            <select id="petGroupSortSelect">
-              <option value="acquiredDesc">獲得降順</option>
-              <option value="acquiredAsc">獲得昇順</option>
-              <option value="bookAsc">図鑑昇順</option>
-              <option value="bookDesc">図鑑降順</option>
-            </select>
-            <label class="toolbar-label">アイテム順</label>
-            <select id="petSortSelect">
-              <option value="atk">攻撃力</option>
-              <option value="hp">HP</option>
-              <option value="passive">スキル値</option>
-            </select>
-          </div>
-        </div>
- 
-        <!-- ペットリスト（リストのみ） -->
-        <div class="panel-modal-body" id="petPanelBody">
-          <div id="petSynthesisHint" class="synth-hint-text"></div>
-          <div id="petSynthesisPreview" class="synth-preview-text"></div>
-          <ul id="petList"></ul>
-        </div>
- 
-        <!-- 合成ボタン（モーダル下部に固定） -->
-        <div class="panel-modal-footer">
-          <button id="petSynthesizeBtn">合成する</button>
-        </div>
+
+    <div class="action-panel">
+      <div class="action-row action-row-attack">
+        <button id="attackBtn">攻撃</button>
+      </div>
+      <div class="action-row action-row-main">
+        <button id="petToggleBtn" class="main-nav-btn">
+          <span class="nav-icon">🐾</span><span class="nav-label">ペット</span>
+        </button>
+        <button id="inventoryToggleBtn" class="main-nav-btn">
+          <span class="nav-icon">📦</span><span class="nav-label">装備</span>
+        </button>
+      </div>
+      <div class="action-row action-row-sub">
+        <button id="bookBtn" class="sub-nav-btn">📖 図鑑</button>
+        <button id="statusBtn" class="sub-nav-btn">📊 状態</button>
+        <button id="moreBtn" class="sub-nav-btn">⋯ その他</button>
       </div>
     </div>
- 
-    <!-- 図鑑ポップアップ -->
-    <div id="bookOverlay" class="book-overlay hidden">
-      <div class="book-modal">
-        <div class="book-header">
-          <h2>図鑑</h2>
-          <button id="bookCloseBtn">✕</button>
-        </div>
-        <div class="book-tabs">
-          <button class="book-tab active" data-tab="enemies">敵</button>
-          <button class="book-tab" data-tab="weapons">武器</button>
-        </div>
-        <div id="bookBuffSummary" class="book-buff-summary"></div>
-        <div class="book-search-bar">
-          <input type="text" id="bookNameInput" class="toolbar-search-input" placeholder="名前で検索...">
-          <button id="bookSearchBtn" class="toolbar-search-btn">検索</button>
-        </div>
-        <div id="bookContent" class="book-content"></div>
+
+    <div id="log" class="log-panel"></div>
+  </div>
+
+  <div id="genericOverlay" class="book-overlay hidden">
+    <div class="book-modal">
+      <div class="book-header">
+        <span id="modalTitle">情報</span>
+        <button id="modalCloseBtn" style="background:none; color:white; font-size:20px;">✕</button>
       </div>
+      <div class="panel-modal-body" id="modalContent">
+        </div>
     </div>
- 
-    <!-- ステータスポップアップ -->
-    <div id="statusOverlay" class="book-overlay hidden">
-      <div class="book-modal">
-        <div class="book-header">
-          <span>ステータス</span>
-          <button id="statusCloseBtn">✕</button>
-        </div>
-        <div id="statusContent" class="status-detail-content"></div>
-        <div class="panel-modal-footer status-reset-footer">
-          <button id="resetBtn">🗑️ データをリセット</button>
-        </div>
-      </div>
-    </div>
- 
-    <!-- リセット確認モーダル -->
-    <div id="resetConfirmOverlay" class="book-overlay hidden">
-      <div class="book-modal reset-confirm-modal">
-        <div class="book-header">
-          <span>⚠️ リセット確認</span>
-        </div>
-        <div class="reset-confirm-body">
-          <p>すべてのセーブデータが削除されます。<br>この操作は取り消せません。</p>
-          <p class="reset-confirm-sub">本当にリセットしますか？</p>
-        </div>
-        <div class="reset-confirm-footer">
-          <button id="resetCancelBtn">キャンセル</button>
-          <button id="resetConfirmBtn">リセットする</button>
-        </div>
-      </div>
-    </div>
- 
- 
-    <!-- 実績ポップアップ -->
-    <div id="achievementOverlay" class="book-overlay hidden">
-      <div class="book-modal">
-        <div class="book-header">
-          <h2>🏆 実績</h2>
-          <button id="achievementCloseBtn">✕</button>
-        </div>
-        <div id="achievementStickyArea"></div>
-        <div id="achievementContent" class="book-content achievement-list-content"></div>
-      </div>
-    </div>
- 
-    <!-- 実績達成通知 -->
-    <div id="achievementPopup" class="achievement-popup hidden">
-      <div class="achievement-popup-inner">
-        <div class="achievement-popup-title">🏆 実績解除！</div>
-        <div class="achievement-popup-label" id="achievementPopupLabel"></div>
-        <div class="achievement-popup-desc" id="achievementPopupDesc"></div>
-      </div>
-    </div>
- 
-    <!-- 極個体ポップアップ -->
-    <div id="ultimateOverlay" class="ultimate-overlay hidden">
-      <div class="ultimate-modal">
-        <div class="ultimate-modal-label">【極】</div>
-        <div class="ultimate-modal-sub" id="ultimateSub"></div>
-        <div class="ultimate-modal-name" id="ultimateName"></div>
-        <div class="ultimate-modal-stats" id="ultimateStats"></div>
-        <div class="ultimate-modal-hint">タップして閉じる</div>
-      </div>
-    </div>
- 
-    <div id="legendaryOverlay" class="legendary-overlay hidden">
-      <div class="legendary-modal">
-        <div class="legendary-modal-label">✨伝説✨</div>
-        <div class="legendary-modal-sub" id="legendarySub"></div>
-        <div class="legendary-modal-name" id="legendaryName"></div>
-        <div class="legendary-modal-skill" id="legendarySkill"></div>
-        <div class="legendary-modal-capture-stats hidden" id="legendaryCaptureStats"></div>
-        <div class="legendary-modal-hint">タップして閉じる</div>
-      </div>
-    </div>
- 
-    <!-- 究極個体ポップアップ（赤） -->
-    <div id="legendUltimateOverlay" class="legend-ultimate-overlay hidden">
-      <div class="legend-ultimate-modal">
-        <div class="legend-ultimate-modal-label">🔴 究極個体 🔴</div>
-        <div class="legend-ultimate-modal-sub" id="legendUltimateSub"></div>
-        <div class="legend-ultimate-modal-name" id="legendUltimateName"></div>
-        <div class="legend-ultimate-modal-skill" id="legendUltimateSkill"></div>
-        <div class="legend-ultimate-modal-capture-stats hidden" id="legendUltimateCaptureStats"></div>
-        <div class="legend-ultimate-modal-hint">タップして閉じる</div>
-      </div>
-    </div>
- 
-    <!-- 極個体ポップアップ（琥珀） -->
-    <div id="eliteOverlay" class="elite-overlay hidden">
-      <div class="elite-modal">
-        <div class="elite-modal-label">⭐ 極個体 ⭐</div>
-        <div class="elite-modal-sub" id="eliteSub"></div>
-        <div class="elite-modal-name" id="eliteName"></div>
-        <div class="elite-modal-stats hidden" id="eliteStats"></div>
-        <div class="elite-modal-hint">タップして閉じる</div>
-      </div>
-    </div>
- 
-    <!-- 隠しボス出現モーダル -->
-    <div id="hiddenBossOverlay" class="hidden-boss-overlay hidden">
-      <div class="hidden-boss-modal">
-        <div class="hidden-boss-modal-label">💀 隠しボス出現！</div>
-        <div class="hidden-boss-modal-sin"  id="hiddenBossSin"></div>
-        <div class="hidden-boss-modal-name" id="hiddenBossName"></div>
-        <p id="hiddenBossDesc" style="font-size:13px; color:#aaa; margin-top:8px;"></p>
-        <div class="hidden-boss-modal-hint">タップして閉じる</div>
-      </div>
-    </div>
- 
-    <!-- 隠しボス報酬モーダル -->
-    <div id="hiddenBossRewardOverlay" class="book-overlay hidden">
-      <div class="book-modal">
-        <div class="book-header">
-          <h2>💀 撃破報酬</h2>
-        </div>
-        <div class="hidden-boss-reward-body">
-          <div class="hidden-boss-reward-sin"  id="hiddenBossRewardSin"></div>
-          <div class="hidden-boss-reward-name" id="hiddenBossRewardName"></div>
-          <div class="hidden-boss-reward-row"  id="hiddenBossRewardPoints"></div>
-          <div class="hidden-boss-reward-row"  id="hiddenBossRewardPet"></div>
-          <div class="hidden-boss-reward-row"  id="hiddenBossRewardWeapon"></div>
-          <p id="hiddenBossRewardNote" style="font-size:12px; color:#888; margin-top:10px;"></p>
-          <button id="hiddenBossRewardCloseBtn" class="hidden-boss-reward-close-btn">閉じる</button>
-        </div>
-      </div>
-    </div>
- 
-    <!-- 説明モーダル -->
-    <div id="helpOverlay" class="book-overlay hidden">
-      <div class="book-modal">
-        <div class="book-header">
-          <span>説明</span>
-          <button id="helpCloseBtn">✕</button>
-        </div>
-        <div class="book-content">
- 
-          <!-- ステータスについて -->
-          <div class="accordion-item">
-            <button class="accordion-btn" data-target="helpStatusContent">ステータスについて <span class="accordion-arrow">▼</span></button>
-            <div id="helpStatusContent" class="accordion-body hidden">
-              <dl class="help-list">
-                <dt>ATK（攻撃力）</dt>
-                <dd>装備武器・宝玉・スキルの効果を反映した実際の攻撃力。</dd>
-                <dt>HP</dt>
-                <dd>現在HP / 最大HP。0になると戦闘不能。スキルや図鑑バフで最大値を増加できる。</dd>
-                <dt>クリティカルダメージ</dt>
-                <dd>クリティカル時のダメージ倍率。基本1.5倍。強化スキルや超過クリ率で上昇する。</dd>
-                <dt>図鑑バフ</dt>
-                <dd>図鑑登録数に応じてHP・ATKがボーナス加算される。敵は撃破or捕獲で加算。武器は進化で加算。
-                </dd>
-              </dl>
-            </div>
-          </div>
- 
-          <!-- スキルについて -->
-          <div class="accordion-item">
-            <button class="accordion-btn" data-target="helpSkillContent">スキルについて <span class="accordion-arrow">▼</span></button>
-            <div id="helpSkillContent" class="accordion-body hidden">
-              <p class="help-section-label">■ 通常スキル</p>
-              <dl class="help-list">
-                <dt>捕獲率上昇</dt><dd>捕獲成功率が上昇する。</dd>
-                <dt>経験値増加</dt><dd>獲得経験値が増加する。</dd>
-                <dt>攻撃力増加</dt><dd>攻撃力が増加する。</dd>
-                <dt>ドロップ率上昇</dt><dd>武器ドロップ率が上昇する。</dd>
-                <dt>与ダメ増加</dt><dd>全攻撃の与ダメージが増加する。</dd>
-                <dt>被ダメ減少</dt><dd>受けるダメージが減少する。上限80%（鉄壁と合算）。超過分は最大HP増加に変換（超過分×0.2）。</dd>
-                <dt>HP増加</dt><dd>最大HPが増加する。</dd>
-                <dt>2回攻撃</dt><dd>確率で攻撃が2回になる。上限100%。超過分は与ダメ増加に変換（超過分×0.2）。</dd>
-                <dt>根性</dt><dd>確率でHP0になるダメージを1で耐える（1戦闘1回）。上限80%。超過分は最大HP増加に変換（超過分×0.2）。</dd>
-                <dt>ダメージ反射</dt><dd>受けたダメージをスキル効果量の割合で反射する。</dd>
-                <dt>与ダメ吸収</dt><dd>与えたダメージのスキル効果量分だけ回復する。回復量は最大HPが上限。</dd>
-                <dt>クリティカル率上昇</dt><dd>攻撃がクリティカルになる確率が上昇する。100%超過分はクリダメ増加に変換。</dd>
-                <dt>クリティカルダメージ増加</dt><dd>クリティカル時のダメージ倍率が上昇する。</dd>
-                <dt>経験値爆発</dt><dd>確率で最終取得経験値が2倍になる。上限100%。超過分は経験値増加に変換（超過分×0.2）。【幸運の女神】と同時装備時は【幸運の女神】が優先され、このスキルは無効になる。</dd>
-                <dt>巨人殺し</dt><dd>敵HPが自分の現在HPより高い時、与ダメージが増加する。</dd>
-                <dt>ボス特効</dt><dd>ボス戦闘時の与ダメが増加する。</dd>
-                <dt>回避</dt><dd>確率で敵の攻撃を完全回避する。上限90%。超過分は与ダメ増加に変換（超過分×0.2）。</dd>
-                <dt>背水の陣</dt><dd>HP30%以下で与ダメージが増加する。</dd>
-                <dt>再生</dt><dd>2ターンに1回、最大HPの一定%を回復する。上限50%/ターン（不滅と合算）。超過分は最大HP増加に変換（超過分×0.2）。</dd>
-                <dt>復活</dt><dd>戦闘不能時に確率でHP50%で復活する（1戦闘1回）。上限100%。超過分は最大HP増加に変換（超過分×0.2）。</dd>
-              </dl>
-              <p class="help-section-label">■ レジェンダリースキル</p>
-              <dl class="help-list">
-                <dt>【捕縛者】</dt><dd>捕獲率を大幅に上昇させる。</dd>
-                <dt>【賢者】</dt><dd>獲得経験値を大幅に増加させる。</dd>
-                <dt>【破壊神】</dt><dd>攻撃力を大幅に増加させる。</dd>
-                <dt>【財宝王】</dt><dd>ドロップ率を大幅に上昇させる。</dd>
-                <dt>【剛力】</dt><dd>与ダメージを大幅に上昇させる。</dd>
-                <dt>【鉄壁】</dt><dd>被ダメージを大幅に減少させる。上限80%（被ダメ減少と合算）。超過分は最大HP増加に変換（超過分×0.2）。また3ターンごとにダメージを無効化する。</dd>
-                <dt>【巨人】</dt><dd>最大HPを大幅に増加させる。</dd>
-                <dt>【連撃王】</dt><dd>確率で攻撃が3回になる。上限100%。超過分は与ダメ増加に変換（超過分×0.2）。</dd>
-                <dt>【不死身】</dt><dd>確率でHP0になるダメージを1で耐える（発生率上限80%・回数制限なし）。超過分は最大HP増加に変換（超過分×0.2）。</dd>
-                <dt>【鏡盾】</dt><dd>受けたダメージをスキル効果量で反射する。反射するたびに反射量が50%増加する（戦闘終了時にリセット）。</dd>
-                <dt>【吸血鬼】</dt><dd>与えたダメージのスキル効果量分だけ回復する。回復量は最大HPが上限。最大HPを超える回復量は次のターンの攻撃力に加算される（1ターンのみ有効）。</dd>
-                <dt>【致命眼】</dt><dd>クリティカル率を大幅に上昇させる。100%超過分はクリダメ増加に変換。</dd>
-                <dt>【覇者】</dt><dd>クリティカル時のダメージを大幅に強化する。</dd>
-                <dt>【幸運の女神】</dt><dd>確率で最終取得経験値が5倍になる。上限100%。超過分は経験値増加に変換（超過分×0.2）。経験値爆発と同時装備時はこのスキルが優先され、経験値爆発は無効になる。</dd>
-                <dt>【下剋上】</dt><dd>敵の現在HPが自分の現在HPより高い時、与ダメージが大幅に増加する。</dd>
-                <dt>【覇王討伐】</dt><dd>ボス戦闘時の与ダメージが大幅に増加する。</dd>
-                <dt>【幻影】</dt><dd>確率で敵の攻撃を完全回避する。回避後は1ターン完全無敵になる。上限90%。超過分は与ダメ増加に変換（超過分×0.2）。</dd>
-                <dt>【挑戦者】</dt><dd>HP50%以下で与ダメージが大幅に増加する。</dd>
-                <dt>【不滅】</dt><dd>毎ターン最大HPの一定%を回復する。上限50%/ターン（再生と合算）。超過分は最大HP増加に変換（超過分×0.2）。</dd>
-                <dt>【輪廻転生】</dt><dd>確率で戦闘不能時にHP50%で復活する（発生率上限80%・回数制限なし）。超過分は最大HP増加に変換（超過分×0.2）。</dd>
-              </dl>
-            </div>
-          </div>
- 
-          <!-- 敵について -->
-          <div class="accordion-item">
-            <button class="accordion-btn" data-target="helpEnemyContent">敵について <span class="accordion-arrow">▼</span></button>
-            <div id="helpEnemyContent" class="accordion-body hidden">
-              <dl class="help-list">
-                <dt>称号ランクとは</dt>
-                <dd>敵にはランク1〜4の称号がある。ランクが高いほどHP・攻撃力が高く、スキル効果値も強くなる。</dd>
-                <dt>ボス</dt>
-                <dd>特定の階層に出現する強敵。倒すと宝玉をドロップする。</dd>
-                <dt>経験値・ドロップ</dt>
-                <dd>ランクが高い敵ほど多くの経験値を貰える。通常の敵は武器をドロップすることがある。</dd>
-              </dl>
-            </div>
-          </div>
- 
-          <!-- ペットについて -->
-          <div class="accordion-item">
-            <button class="accordion-btn" data-target="helpPetContent">ペットについて <span class="accordion-arrow">▼</span></button>
-            <div id="helpPetContent" class="accordion-body hidden">
-              <dl class="help-list">
-                <dt>捕獲</dt>
-                <dd>敵を撃破した際に確率でペットとして捕獲できる。捕獲率はスキルで上昇可能。</dd>
-                <dt>称号ランク</dt>
-                <dd>捕獲したペットには敵と同じランク1〜4の称号がある。ランクが高いほどスキル効果値が高い。</dd>
-                <dt>装備・合成</dt>
-                <dd>ペットは1体だけ装備できる。同じ種族のペットを合成するとATK・HPが上昇する。</dd>
-              </dl>
-            </div>
-          </div>
- 
-          <!-- レア個体について -->
-          <div class="accordion-item">
-            <button class="accordion-btn" data-target="helpRareContent">レア個体について <span class="accordion-arrow">▼</span></button>
-            <div id="helpRareContent" class="accordion-body hidden">
-              <dl class="help-list">
-                <dt>極個体 ⭐</dt>
-                <dd>ステータス・スキル値が全て最高値の個体。稀に出現する（通常2%、ボス1%）。</dd>
-                <dt>伝説個体 ✨</dt>
-                <dd>レジェンダリースキルを持つ特殊な個体。とても稀に出現する（通常1%、ボス0.5%）。</dd>
-                <dt>究極個体 🔴</dt>
-                <dd>伝説個体の中でさらにステータスが最大値になった最強の個体。ごく稀に出現する。（通常0.5%、ボス0.25%）</dd>
-              </dl>
-            </div>
-          </div>
- 
-          <!-- 武器の進化について -->
-          <div class="accordion-item">
-            <button class="accordion-btn" data-target="helpWeaponContent">武器の進化について <span class="accordion-arrow">▼</span></button>
-            <div id="helpWeaponContent" class="accordion-body hidden">
-              <dl class="help-list">
-                <dt>進化とは</dt>
-                <dd>武器には進化レベル1〜4の段階がある。合成を重ねることで進化する。</dd>
-              </dl>
-            </div>
-          </div>
- 
-        </div>
-      </div>
-    </div>
- 
-    <!-- プレイヤー名入力モーダル -->
-    <div id="nameInputOverlay" class="book-overlay hidden">
-      <div class="book-modal name-input-modal">
-        <div class="book-header">
-          <span>プレイヤー名を入力</span>
-        </div>
-        <div class="name-input-body">
-          <p class="name-input-desc">ランキングに表示される名前を入力してください。<br>一度設定すると変更できません。</p>
-          <input type="text" id="playerNameInput" maxlength="12" placeholder="名前（12文字以内）">
-          <p id="nameInputError" class="name-input-error hidden"></p>
-          <button id="playerNameSubmitBtn">決定</button>
-        </div>
-      </div>
-    </div>
- 
-    <!-- ランキングモーダル -->
-    <div id="rankingOverlay" class="book-overlay hidden">
-      <div class="book-modal">
-        <div class="book-header">
-          <h2>🏆 ランキング</h2>
-          <button id="rankingCloseBtn">✕</button>
-        </div>
-        <div class="book-tabs">
-          <button class="ranking-tab active" data-field="maxFloor">最深階層</button>
-          <button class="ranking-tab" data-field="level">レベル</button>
-          <button class="ranking-tab" data-field="petCount">ペット図鑑</button>
-          <button class="ranking-tab" data-field="weaponCount">武器図鑑</button>
-          <button class="ranking-tab" data-field="achievementCount">実績</button>
-        </div>
-        <p class="ranking-tab-note" id="rankingTabNote">到達した最深階層数</p>
-        <p class="ranking-note">ランキングは30分おきに自動更新されます</p>
-        <div id="rankingContent" class="book-content"></div>
-      </div>
-    </div>
- 
-    <!-- その他モーダル -->
-    <div id="moreOverlay" class="book-overlay hidden">
-      <div class="book-modal more-modal">
-        <div class="book-header">
-          <span>その他</span>
-          <button id="moreCloseBtn">✕</button>
-        </div>
-        <div class="more-modal-body">
-          <button id="achievementBtn" class="more-item-btn">🎖️ 実績</button>
-          <button id="rankingBtn"     class="more-item-btn">🏆 ランキング</button>
-          <button id="researchBtn"    class="more-item-btn">🔬 研究所</button>
-          <button id="helpBtn"        class="more-item-btn">❓ 説明</button>
-          <button id="settingBtn"     class="more-item-btn">⚙️ 設定</button>
-        </div>
-      </div>
-    </div>
- 
-    <!-- 設定モーダル -->
-    <div id="settingOverlay" class="book-overlay hidden">
-      <div class="book-modal setting-modal">
-        <div class="book-header">
-          <span>⚙️ 設定</span>
-          <button id="settingCloseBtn">✕</button>
-        </div>
-        <div class="setting-modal-body">
-          <div class="setting-item">
-            <span class="setting-label">出現モーダルを表示する<br><small>（伝説・究極・極個体の出現時）</small></span>
-            <label class="setting-toggle">
-              <input type="checkbox" id="showAppearModalChk">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="setting-item">
-            <span class="setting-label">捕獲モーダルを表示する<br><small>（伝説・究極・極個体の捕獲時）</small></span>
-            <label class="setting-toggle">
-              <input type="checkbox" id="showCaptureModalChk">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="setting-item">
-            <span class="setting-label">一括選択にレア個体を含める<br><small>（ペット合成の一括選択時）</small></span>
-            <label class="setting-toggle">
-              <input type="checkbox" id="includeRareInSelectAllChk">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
- 
-    <!-- 研究所モーダル -->
-    <div id="researchOverlay" class="book-overlay hidden">
-      <div class="book-modal">
-        <div class="book-header">
-          <h2>🔬 研究所</h2>
-          <button id="researchCloseBtn">✕</button>
-        </div>
- 
-        <!-- 未開放時 -->
-        <div id="researchLocked" class="hidden">
-          <p class="research-locked-msg">🔒 500階到達で開放されます</p>
-        </div>
- 
-        <!-- 開放後 -->
-        <div id="researchContent" class="book-content">
-          <!-- 研究所レベル・貢献P表示 -->
-          <div class="research-status">
-            <span id="researchLevel">研究所 Lv.1</span>
-            <span id="researchPoints">貢献P: 0</span>
-            <div id="researchLevelProgress"></div>
-          </div>
- 
-          <!-- タブ -->
-          <div class="research-tabs">
-            <button class="research-tab active" data-tab="missions">ミッション</button>
-            <button class="research-tab" data-tab="exchange">交換所</button>
-          </div>
- 
-          <!-- ミッションタブ -->
-          <div id="researchMissions" class="research-tab-content">
-            <div class="research-reroll-area">
-              <button id="researchRerollBtn">🔄 リロール（貢献P <span id="rerollCostDisplay">1</span>消費）</button>
-            </div>
-            <ul id="missionList" class="mission-list"></ul>
-          </div>
- 
-          <!-- 交換所タブ -->
-          <div id="researchExchange" class="research-tab-content hidden">
-            <ul id="exchangeList" class="exchange-list"></ul>
-          </div>
-        </div>
-      </div>
-    </div>
- 
-    <!-- 寄贈用ペット選択モーダル -->
-    <div id="donateOverlay" class="book-overlay hidden">
-      <div class="book-modal donate-modal">
-        <div class="book-header">
-          <h2>ペットを選択</h2>
-          <button id="donateCloseBtn">✕</button>
-        </div>
-        <p id="donateCondition" class="donate-condition"></p>
-        <div class="donate-select-all-row">
-          <button id="donateSelectAllBtn" class="secondary-btn">⚡ 一括選択</button>
-        </div>
-        <ul id="donatePetList" class="pet-list donate-pet-list"></ul>
-        <div class="donate-footer">
-          <button id="donateConfirmBtn" class="primary-btn" disabled>寄贈する</button>
-        </div>
-      </div>
-    </div>
- 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
-    <script type="module" src="js/main.js"></script>
-    <script type="module" src="js/firebase-config.js"></script>
-  </body>
+  </div>
+
+  <script>
+    /* --- JavaScript Logic --- */
+    
+    // ゲームデータ
+    const game = {
+      player: { lv: 1, exp: 0, nextExp: 100, hp: 100, maxHp: 100, atk: 10 },
+      enemy: { name: "深淵のスライム", hp: 20, maxHp: 20, atk: 5, exp: 40 },
+      floor: 1,
+      logCount: 0
+    };
+
+    // DOM要素
+    const el = {
+      attackBtn: document.getElementById('attackBtn'),
+      log: document.getElementById('log'),
+      pLevel: document.getElementById('playerLevel'),
+      pExp: document.getElementById('expBar'),
+      pHp: document.getElementById('playerHp'),
+      pAtk: document.getElementById('playerAttack'),
+      eName: document.getElementById('enemyName'),
+      eHp: document.getElementById('enemyHp'),
+      floor: document.getElementById('floorDisplay'),
+      overlay: document.getElementById('genericOverlay'),
+      modalTitle: document.getElementById('modalTitle'),
+      modalContent: document.getElementById('modalContent'),
+      modalClose: document.getElementById('modalCloseBtn')
+    };
+
+    // ログ表示
+    function addLog(msg, color = "#fff") {
+      const p = document.createElement('div');
+      p.style.color = color;
+      p.textContent = `> ${msg}`;
+      el.log.prepend(p);
+      if (el.log.childNodes.length > 30) el.log.lastChild.remove();
+    }
+
+    // UI更新
+    function updateUI() {
+      el.pLevel.textContent = `Lv.${game.player.lv}`;
+      el.floor.textContent = `地下${game.floor}階`;
+      el.pHp.textContent = `HP: ${game.player.hp} / ${game.player.maxHp}`;
+      el.pAtk.textContent = `ATK: ${game.player.atk}`;
+      el.eName.textContent = game.enemy.name;
+      el.eHp.textContent = `HP: ${game.enemy.hp} / ${game.enemy.maxHp}`;
+      
+      const expPercent = (game.player.exp / game.player.nextExp) * 100;
+      el.pExp.style.width = `${expPercent}%`;
+    }
+
+    // 敵の生成
+    function spawnEnemy() {
+      game.enemy.maxHp = 20 + (game.floor * 10);
+      game.enemy.hp = game.enemy.maxHp;
+      game.enemy.atk = 5 + (game.floor * 2);
+      game.enemy.exp = 30 + (game.floor * 10);
+      addLog(`地下${game.floor}階で ${game.enemy.name} が現れた！`);
+      updateUI();
+    }
+
+    // 攻撃処理
+    el.attackBtn.addEventListener('click', () => {
+      // プレイヤーのターン
+      const pDmg = game.player.atk;
+      game.enemy.hp -= pDmg;
+      addLog(`${game.enemy.name}に ${pDmg} のダメージ！`, "#4a90e2");
+
+      if (game.enemy.hp <= 0) {
+        addLog(`${game.enemy.name}を倒した！ ${game.enemy.exp}の経験値を獲得。`, "#4caf50");
+        gainExp(game.enemy.exp);
+        if (!document.getElementById('stayOnFloorChk').checked) {
+          game.floor++;
+        }
+        spawnEnemy();
+        return;
+      }
+
+      // 敵のターン
+      const eDmg = game.enemy.atk;
+      game.player.hp -= eDmg;
+      addLog(`${game.enemy.name}の攻撃！ ${eDmg} のダメージを受けた。`, "#e74c3c");
+
+      if (game.player.hp <= 0) {
+        addLog("目の前が真っ暗になった...", "#888");
+        game.player.hp = game.player.maxHp;
+        game.floor = Math.max(1, game.floor - 5);
+        spawnEnemy();
+      }
+      updateUI();
+    });
+
+    // 経験値獲得
+    function gainExp(amount) {
+      game.player.exp += amount;
+      if (game.player.exp >= game.player.nextExp) {
+        game.player.lv++;
+        game.player.exp = 0;
+        game.player.nextExp = Math.floor(game.player.nextExp * 1.5);
+        game.player.maxHp += 20;
+        game.player.hp = game.player.maxHp;
+        game.player.atk += 5;
+        addLog(`レベルアップ！ Lv.${game.player.lv} になった！`, "#ffeb3b");
+      }
+    }
+
+    // モーダル制御
+    function openModal(title, content) {
+      el.modalTitle.textContent = title;
+      el.modalContent.innerHTML = content;
+      el.overlay.classList.remove('hidden');
+    }
+
+    el.modalClose.onclick = () => el.overlay.classList.add('hidden');
+    
+    document.getElementById('inventoryToggleBtn').onclick = () => openModal("装備", "<p>現在装備している武器はありません。</p>");
+    document.getElementById('petToggleBtn').onclick = () => openModal("ペット", "<p>捕獲したペットはいません。</p>");
+    document.getElementById('statusBtn').onclick = () => openModal("ステータス", `<p>攻撃力: ${game.player.atk}</p><p>最大HP: ${game.player.maxHp}</p>`);
+    document.getElementById('moreBtn').onclick = () => openModal("その他", "<button onclick='location.reload()'>再読み込み</button>");
+
+    // 初期化
+    spawnEnemy();
+    addLog("深淵の探求が始まった...");
+  </script>
+</body>
 </html>
