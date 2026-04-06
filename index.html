@@ -3,245 +3,268 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>干支転生 UI</title>
+<title>干支転生プロトタイプ</title>
 
 <style>
 :root{
   --bg:#F5F6F8;
-  --panel:#FFFFFF;
+  --panel:#FFF;
   --accent:#4A90E2;
   --danger:#E94E4E;
-  --text:#222;
 }
 
-body{
-  margin:0;
-  font-family:sans-serif;
-  background:var(--bg);
-  color:var(--text);
-}
+body{margin:0;font-family:sans-serif;background:var(--bg);}
 
-/* タブ */
-.tabs{
-  display:flex;
-  background:#fff;
-  border-bottom:1px solid #ddd;
-}
-.tab{
-  flex:1;
-  padding:10px;
-  text-align:center;
-  cursor:pointer;
-}
-.tab.active{
-  background:var(--accent);
-  color:#fff;
-}
+.tabs{display:flex;background:#fff;}
+.tab{flex:1;padding:10px;text-align:center;cursor:pointer;}
+.tab.active{background:var(--accent);color:#fff;}
 
-/* 画面 */
-.screen{
-  display:none;
-  padding:10px;
-}
-.screen.active{
-  display:block;
-}
+.screen{display:none;padding:10px;}
+.screen.active{display:block;}
 
-/* 上部UI */
-.top{
-  background:var(--panel);
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:10px;
-}
-.bar{
-  height:14px;
-  background:#ddd;
-  border-radius:10px;
-  overflow:hidden;
-  margin:5px 0;
-}
-.fill{
-  height:100%;
-  background:var(--accent);
-}
-.fill.hp{background:#4CAF50;}
-.fill.boss{background:#E94E4E;}
+.top{background:#fff;padding:10px;border-radius:10px;}
+.bar{height:14px;background:#ddd;border-radius:10px;overflow:hidden;margin:5px 0;}
+.fill{height:100%;}
+.hp{background:#4CAF50;}
+.boss{background:#E94E4E;}
 
-.stats{
-  display:flex;
-  justify-content:space-between;
-  font-size:14px;
-}
-
-/* 戦闘エリア */
 .battle{
-  height:250px;
-  background:#fff;
-  border-radius:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  position:relative;
-  overflow:hidden;
+  height:250px;background:#fff;margin-top:10px;
+  border-radius:10px;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
 }
 
-/* ダメージ */
 .dmg{
-  position:absolute;
-  font-weight:bold;
-  animation:pop 0.6s ease-out forwards;
+  position:absolute;font-weight:bold;
+  animation:pop .6s forwards;
 }
 @keyframes pop{
-  0%{opacity:1;transform:translateY(0);}
-  100%{opacity:0;transform:translateY(-40px);}
+  to{opacity:0;transform:translateY(-40px);}
 }
 
-/* 下部操作 */
-.controls{
-  display:flex;
-  justify-content:space-between;
-  margin-top:10px;
-}
-.btn{
-  flex:1;
-  margin:5px;
-  padding:15px;
-  background:var(--accent);
-  color:#fff;
-  border:none;
-  border-radius:10px;
-  font-size:16px;
-}
-.btn.dodge{background:#666;}
-.btn:active{transform:scale(0.95);}
+.controls{display:flex;margin-top:10px;}
+.btn{flex:1;margin:5px;padding:15px;border:none;border-radius:10px;color:#fff;}
+.dodge{background:#666;}
+.skill{background:#4A90E2;}
 
-/* 右側情報（簡易） */
-.side{
-  margin-top:10px;
-  font-size:12px;
-  background:#fff;
-  padding:10px;
-  border-radius:10px;
-}
-
-/* カード */
-.card{
-  background:#fff;
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:10px;
-}
+.card{background:#fff;padding:10px;border-radius:10px;margin-top:10px;}
 </style>
 </head>
 
 <body>
 
-<!-- タブ -->
 <div class="tabs">
-  <div class="tab active" onclick="switchTab(0)">戦闘</div>
-  <div class="tab" onclick="switchTab(1)">ビルド</div>
-  <div class="tab" onclick="switchTab(2)">転生</div>
-  <div class="tab" onclick="switchTab(3)">装備</div>
+  <div class="tab active" onclick="tab(0)">戦闘</div>
+  <div class="tab" onclick="tab(1)">転生</div>
+  <div class="tab" onclick="tab(2)">ランキング</div>
 </div>
 
-<!-- 戦闘 -->
 <div class="screen active">
 
-  <div class="top">
-    <div>HP</div>
-    <div class="bar"><div id="hp" class="fill hp" style="width:80%"></div></div>
+<div class="top">
+  HP
+  <div class="bar"><div id="hp" class="fill hp"></div></div>
+  BOSS
+  <div class="bar"><div id="boss" class="fill boss"></div></div>
+  <div>COMBO ×<span id="combo">0</span> / 倍率 ×<span id="multi">1</span></div>
+</div>
 
-    <div>BOSS</div>
-    <div class="bar"><div id="boss" class="fill boss" style="width:100%"></div></div>
+<div class="battle" id="battle">戦闘</div>
 
-    <div class="stats">
-      <div>COMBO ×<span id="combo">0</span></div>
-      <div>TOTAL ×<span id="multi">1.0</span></div>
-    </div>
-  </div>
-
-  <div class="battle" id="battle">
-    戦闘エリア
-  </div>
-
-  <div class="controls">
-    <button class="btn dodge" onclick="dodge()">回避</button>
-    <button class="btn" onclick="skill()">スキル</button>
-  </div>
-
-  <div class="side">
-    干支×2.0<br>
-    装備×1.5<br>
-    条件×3.2
-  </div>
+<div class="controls">
+  <button class="btn dodge" onclick="dodge()">回避</button>
+  <button class="btn skill" onclick="skill()">スキル</button>
+</div>
 
 </div>
 
-<!-- ビルド -->
 <div class="screen">
   <div class="card">
-    <h3>現在の干支：ネズミ</h3>
-    分身型ビルド
+    転生回数：<span id="rebirth"></span><br>
+    干支：<span id="eto"></span><br>
+    <button onclick="rebirth()">転生</button>
   </div>
 </div>
 
-<!-- 転生 -->
 <div class="screen">
-  <div class="card">
-    転生回数：10<br>
-    総合倍率：×1.5
-  </div>
-</div>
-
-<!-- 装備 -->
-<div class="screen">
-  <div class="card">
-    装備一覧（仮）
-  </div>
+  <div class="card" id="rank"></div>
 </div>
 
 <script>
-let combo = 0;
 
-/* タブ切り替え */
-function switchTab(i){
-  document.querySelectorAll('.tab').forEach((t,idx)=>{
-    t.classList.toggle('active', idx===i);
-  });
-  document.querySelectorAll('.screen').forEach((s,idx)=>{
-    s.classList.toggle('active', idx===i);
-  });
+// ===== データ =====
+const ETOS = {
+  rat:{name:"ネズミ", mult:s=>1+s.clone*0.1},
+  tiger:{name:"トラ", mult:s=>1+(1-s.hpRate)*3},
+  horse:{name:"ウマ", mult:s=>1+s.combo*0.03},
+  snake:{name:"ヘビ", mult:s=>1+s.poison*0.2}
+};
+
+let player = {
+  eto:"rat",
+  atk:100,
+  hp:1000,
+  maxHp:1000,
+  combo:0,
+  rebirth:0,
+  clone:0,
+  poison:0
+};
+
+let enemyHP = 3000;
+let floor = 1;
+
+// ===== UI =====
+function updateUI(){
+  hp.style.width = (player.hp/player.maxHp*100)+"%";
+  boss.style.width = (enemyHP/5000*100)+"%";
+  combo.innerText = Math.floor(player.combo);
+  multi.innerText = (1+player.combo*0.02).toFixed(2);
+  document.getElementById("rebirth").innerText = player.rebirth;
+  document.getElementById("eto").innerText = ETOS[player.eto].name;
 }
 
-/* ダメージ表示 */
-function spawnDmg(text, color="black"){
-  const el = document.createElement("div");
-  el.className = "dmg";
-  el.innerText = text;
-  el.style.color = color;
-  el.style.left = Math.random()*80 + "%";
-  el.style.top = "50%";
-  document.getElementById("battle").appendChild(el);
-  setTimeout(()=>el.remove(),600);
+// ===== ダメージ =====
+function dmg(text,color="black"){
+  let e=document.createElement("div");
+  e.className="dmg";
+  e.innerText=text;
+  e.style.color=color;
+  e.style.left=Math.random()*80+"%";
+  e.style.top="50%";
+  battle.appendChild(e);
+  setTimeout(()=>e.remove(),600);
 }
 
-/* 攻撃（オート代わり） */
+// ===== 戦闘 =====
+function calc(){
+  let s={
+    clone:player.clone,
+    poison:player.poison,
+    combo:player.combo,
+    hpRate:player.hp/player.maxHp
+  };
+  let mult=ETOS[player.eto].mult(s);
+  mult*=1+player.combo*0.02;
+  return Math.floor(player.atk*mult);
+}
+
 setInterval(()=>{
-  combo++;
-  document.getElementById("combo").innerText = combo;
-  spawnDmg(Math.floor(Math.random()*1000), "black");
-}, 800);
+  let d=calc();
+  enemyHP-=d;
+  dmg(d);
 
-/* 回避 */
+  player.combo++;
+
+  if(Math.random()<0.2) player.clone++;
+
+  if(enemyHP<=0){
+    floor++;
+    enemyHP = 3000*Math.pow(floor,1.5);
+  }
+
+  if(Math.random()<0.3) enemyAttack();
+
+  updateUI();
+
+},800);
+
+// ===== 敵攻撃 =====
+let lastAtk=0;
+
+function enemyAttack(){
+  lastAtk=Date.now();
+  setTimeout(()=>{
+    damage(100);
+  },400);
+}
+
 function dodge(){
-  spawnDmg("回避!", "blue");
+  let t=Date.now()-lastAtk;
+  if(t<400){
+    player.combo+=5;
+    dmg("JUDGE","blue");
+  }else{
+    dmg("回避","gray");
+  }
 }
 
-/* スキル */
-function skill(){
-  spawnDmg("CRIT!", "red");
+// ===== 被弾 =====
+function damage(d){
+  player.hp-=d;
+  player.combo*=0.7;
+  dmg(d,"red");
+
+  if(player.hp<=0){
+    saveRank();
+    rebirth();
+  }
 }
+
+// ===== スキル =====
+function skill(){
+  dmg("CRIT","red");
+  enemyHP-=calc()*2;
+}
+
+// ===== 転生 =====
+function rebirth(){
+  player.rebirth++;
+  player.hp=player.maxHp;
+  player.combo=0;
+
+  const keys=Object.keys(ETOS);
+  player.eto = keys[Math.floor(Math.random()*keys.length)];
+
+  save();
+}
+
+// ===== セーブ =====
+function save(){
+  localStorage.setItem("save",JSON.stringify(player));
+}
+function load(){
+  let d=localStorage.getItem("save");
+  if(d) player=JSON.parse(d);
+}
+
+// ===== ランキング =====
+function hash(r){
+  let s=r.floor+r.eto+r.rebirth+"x";
+  let h=0;
+  for(let i=0;i<s.length;i++) h=(h<<5)-h+s.charCodeAt(i);
+  return h;
+}
+
+function saveRank(){
+  let r={floor,eto:player.eto,rebirth:player.rebirth};
+  r.h=hash(r);
+
+  let list=JSON.parse(localStorage.getItem("rank")||"[]");
+  list.push(r);
+  list.sort((a,b)=>b.floor-a.floor);
+  list=list.slice(0,10);
+
+  localStorage.setItem("rank",JSON.stringify(list));
+  renderRank();
+}
+
+function renderRank(){
+  let list=JSON.parse(localStorage.getItem("rank")||"[]");
+  rank.innerHTML = list.map(r=>`${r.floor}F - ${ETOS[r.eto].name}`).join("<br>");
+}
+
+// ===== タブ =====
+function tab(i){
+  document.querySelectorAll(".tab").forEach((t,idx)=>t.classList.toggle("active",idx===i));
+  document.querySelectorAll(".screen").forEach((s,idx)=>s.classList.toggle("active",idx===i));
+}
+
+// ===== 起動 =====
+load();
+renderRank();
+updateUI();
+
 </script>
 
 </body>
