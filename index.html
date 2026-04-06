@@ -3,35 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>干支転生プロトタイプ</title>
+<title>干支転生 改良版</title>
 
 <style>
-:root{
-  --bg:#F5F6F8;
-  --panel:#FFF;
-  --accent:#4A90E2;
-  --danger:#E94E4E;
-}
+body{margin:0;font-family:sans-serif;background:#F5F6F8;}
 
-body{margin:0;font-family:sans-serif;background:var(--bg);}
-
-.tabs{display:flex;background:#fff;}
-.tab{flex:1;padding:10px;text-align:center;cursor:pointer;}
-.tab.active{background:var(--accent);color:#fff;}
-
-.screen{display:none;padding:10px;}
-.screen.active{display:block;}
-
-.top{background:#fff;padding:10px;border-radius:10px;}
-.bar{height:14px;background:#ddd;border-radius:10px;overflow:hidden;margin:5px 0;}
-.fill{height:100%;}
-.hp{background:#4CAF50;}
-.boss{background:#E94E4E;}
+.top{background:#fff;padding:10px}
+.bar{height:14px;background:#ddd;border-radius:10px;overflow:hidden;margin:4px 0}
+.fill{height:100%}
+.hp{background:#4CAF50}
+.boss{background:#E94E4E}
+.exp{background:#4A90E2}
 
 .battle{
-  height:250px;background:#fff;margin-top:10px;
-  border-radius:10px;position:relative;overflow:hidden;
+  height:250px;background:#fff;margin:10px;border-radius:10px;
   display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+
+.warning{
+  position:absolute;width:100%;height:100%;
+  background:rgba(255,0,0,0.2);
 }
 
 .dmg{
@@ -39,153 +31,126 @@ body{margin:0;font-family:sans-serif;background:var(--bg);}
   animation:pop .6s forwards;
 }
 @keyframes pop{
-  to{opacity:0;transform:translateY(-40px);}
+  to{opacity:0;transform:translateY(-40px)}
 }
 
-.controls{display:flex;margin-top:10px;}
-.btn{flex:1;margin:5px;padding:15px;border:none;border-radius:10px;color:#fff;}
-.dodge{background:#666;}
-.skill{background:#4A90E2;}
+.controls{display:flex}
+.btn{flex:1;margin:5px;padding:15px;border:none;border-radius:10px;color:#fff}
+.dodge{background:#666}
+.skill{background:#4A90E2}
 
-.card{background:#fff;padding:10px;border-radius:10px;margin-top:10px;}
+.card{background:#fff;margin:10px;padding:10px;border-radius:10px}
+.big{font-size:20px;font-weight:bold}
 </style>
 </head>
 
 <body>
 
-<div class="tabs">
-  <div class="tab active" onclick="tab(0)">戦闘</div>
-  <div class="tab" onclick="tab(1)">転生</div>
-  <div class="tab" onclick="tab(2)">ランキング</div>
-</div>
-
-<div class="screen active">
-
 <div class="top">
-  HP
-  <div class="bar"><div id="hp" class="fill hp"></div></div>
-  BOSS
-  <div class="bar"><div id="boss" class="fill boss"></div></div>
-  <div>COMBO ×<span id="combo">0</span> / 倍率 ×<span id="multi">1</span></div>
+HP <span id="hpText"></span>
+<div class="bar"><div id="hp" class="fill hp"></div></div>
+
+BOSS <span id="bossText"></span>
+<div class="bar"><div id="boss" class="fill boss"></div></div>
+
+LV <span id="lv"></span>
+<div class="bar"><div id="exp" class="fill exp"></div></div>
+
+<div class="big">COMBO ×<span id="combo">0</span></div>
 </div>
 
-<div class="battle" id="battle">戦闘</div>
+<div class="battle" id="battle"></div>
 
 <div class="controls">
-  <button class="btn dodge" onclick="dodge()">回避</button>
-  <button class="btn skill" onclick="skill()">スキル</button>
+<button class="btn dodge" onclick="dodge()">回避</button>
+<button class="btn skill" onclick="skill()">スキル</button>
 </div>
 
-</div>
-
-<div class="screen">
-  <div class="card">
-    転生回数：<span id="rebirth"></span><br>
-    干支：<span id="eto"></span><br>
-    <button onclick="rebirth()">転生</button>
-  </div>
-</div>
-
-<div class="screen">
-  <div class="card" id="rank"></div>
-</div>
+<div class="card" id="build"></div>
 
 <script>
 
-// ===== データ =====
-const ETOS = {
-  rat:{name:"ネズミ", mult:s=>1+s.clone*0.1},
-  tiger:{name:"トラ", mult:s=>1+(1-s.hpRate)*3},
-  horse:{name:"ウマ", mult:s=>1+s.combo*0.03},
-  snake:{name:"ヘビ", mult:s=>1+s.poison*0.2}
-};
-
-let player = {
-  eto:"rat",
-  atk:100,
-  hp:1000,
-  maxHp:1000,
+// ===== 状態 =====
+let player={
+  atk:50,
+  hp:500,
+  maxHp:500,
   combo:0,
-  rebirth:0,
-  clone:0,
-  poison:0
+  level:1,
+  exp:0,
+  eto:"tiger"
 };
 
-let enemyHP = 3000;
-let floor = 1;
+let enemyHP=1000;
+let incoming=false;
+let skillCD=0;
 
-// ===== UI =====
-function updateUI(){
-  hp.style.width = (player.hp/player.maxHp*100)+"%";
-  boss.style.width = (enemyHP/5000*100)+"%";
-  combo.innerText = Math.floor(player.combo);
-  multi.innerText = (1+player.combo*0.02).toFixed(2);
-  document.getElementById("rebirth").innerText = player.rebirth;
-  document.getElementById("eto").innerText = ETOS[player.eto].name;
-}
-
-// ===== ダメージ =====
-function dmg(text,color="black"){
+// ===== ダメージ表示 =====
+function dmg(t,c="black"){
   let e=document.createElement("div");
   e.className="dmg";
-  e.innerText=text;
-  e.style.color=color;
+  e.innerText=t;
+  e.style.color=c;
   e.style.left=Math.random()*80+"%";
   e.style.top="50%";
   battle.appendChild(e);
   setTimeout(()=>e.remove(),600);
 }
 
-// ===== 戦闘 =====
+// ===== 計算 =====
 function calc(){
-  let s={
-    clone:player.clone,
-    poison:player.poison,
-    combo:player.combo,
-    hpRate:player.hp/player.maxHp
-  };
-  let mult=ETOS[player.eto].mult(s);
+  let mult=1+(1-player.hp/player.maxHp)*2; // トラ
   mult*=1+player.combo*0.02;
   return Math.floor(player.atk*mult);
 }
 
+// ===== 攻撃ループ =====
 setInterval(()=>{
+
   let d=calc();
   enemyHP-=d;
-  dmg(d);
-
   player.combo++;
 
-  if(Math.random()<0.2) player.clone++;
+  dmg(d);
 
   if(enemyHP<=0){
-    floor++;
-    enemyHP = 3000*Math.pow(floor,1.5);
+    enemyHP=1000;
+    gainExp(50);
   }
 
-  if(Math.random()<0.3) enemyAttack();
+  if(Math.random()<0.4) enemyAttack();
 
-  updateUI();
+  if(skillCD>0) skillCD--;
+
+  update();
 
 },800);
 
 // ===== 敵攻撃 =====
-let lastAtk=0;
-
 function enemyAttack(){
-  lastAtk=Date.now();
+  incoming=true;
+
+  let w=document.createElement("div");
+  w.className="warning";
+  battle.appendChild(w);
+
   setTimeout(()=>{
-    damage(100);
-  },400);
+    if(incoming){
+      damage(120);
+    }
+    incoming=false;
+    w.remove();
+  },700);
 }
 
+// ===== 回避 =====
 function dodge(){
-  let t=Date.now()-lastAtk;
-  if(t<400){
-    player.combo+=5;
-    dmg("JUDGE","blue");
+  if(incoming){
+    incoming=false;
+    player.combo+=10;
+    dmg("JUST!", "blue");
   }else{
-    dmg("回避","gray");
+    dmg("MISS","gray");
   }
 }
 
@@ -196,76 +161,66 @@ function damage(d){
   dmg(d,"red");
 
   if(player.hp<=0){
-    saveRank();
-    rebirth();
+    alert("死亡→転生");
+    location.reload();
   }
 }
 
 // ===== スキル =====
 function skill(){
-  dmg("CRIT","red");
-  enemyHP-=calc()*2;
+  if(skillCD>0){
+    dmg("CD中","gray");
+    return;
+  }
+
+  let d=calc()*3;
+
+  if(player.combo>30){
+    d*=2;
+    dmg("SUPER!", "orange");
+  }
+
+  enemyHP-=d;
+  skillCD=5;
 }
 
-// ===== 転生 =====
-function rebirth(){
-  player.rebirth++;
-  player.hp=player.maxHp;
-  player.combo=0;
+// ===== 経験値 =====
+function gainExp(v){
+  player.exp+=v;
 
-  const keys=Object.keys(ETOS);
-  player.eto = keys[Math.floor(Math.random()*keys.length)];
+  let need=player.level*100;
 
-  save();
+  if(player.exp>=need){
+    player.exp-=need;
+    player.level++;
+    player.atk*=1.2;
+    dmg("LEVEL UP!", "green");
+  }
 }
 
-// ===== セーブ =====
-function save(){
-  localStorage.setItem("save",JSON.stringify(player));
-}
-function load(){
-  let d=localStorage.getItem("save");
-  if(d) player=JSON.parse(d);
-}
+// ===== UI更新 =====
+function update(){
+  hp.style.width=(player.hp/player.maxHp*100)+"%";
+  boss.style.width=(enemyHP/1000*100)+"%";
 
-// ===== ランキング =====
-function hash(r){
-  let s=r.floor+r.eto+r.rebirth+"x";
-  let h=0;
-  for(let i=0;i<s.length;i++) h=(h<<5)-h+s.charCodeAt(i);
-  return h;
-}
+  hpText.innerText=Math.floor(player.hp)+"/"+player.maxHp;
+  bossText.innerText=Math.floor(enemyHP);
 
-function saveRank(){
-  let r={floor,eto:player.eto,rebirth:player.rebirth};
-  r.h=hash(r);
+  combo.innerText=Math.floor(player.combo);
+  lv.innerText=player.level;
 
-  let list=JSON.parse(localStorage.getItem("rank")||"[]");
-  list.push(r);
-  list.sort((a,b)=>b.floor-a.floor);
-  list=list.slice(0,10);
+  exp.style.width=(player.exp/(player.level*100)*100)+"%";
 
-  localStorage.setItem("rank",JSON.stringify(list));
-  renderRank();
+  build.innerHTML=`
+干支：トラ<br>
+ATK：${Math.floor(player.atk)}<br>
+倍率：×${(1+player.combo*0.02).toFixed(2)}<br>
+スキルCD：${skillCD}
+`;
 }
 
-function renderRank(){
-  let list=JSON.parse(localStorage.getItem("rank")||"[]");
-  rank.innerHTML = list.map(r=>`${r.floor}F - ${ETOS[r.eto].name}`).join("<br>");
-}
-
-// ===== タブ =====
-function tab(i){
-  document.querySelectorAll(".tab").forEach((t,idx)=>t.classList.toggle("active",idx===i));
-  document.querySelectorAll(".screen").forEach((s,idx)=>s.classList.toggle("active",idx===i));
-}
-
-// ===== 起動 =====
-load();
-renderRank();
-updateUI();
+update();
 
 </script>
-
 </body>
 </html>
