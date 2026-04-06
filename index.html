@@ -1,341 +1,248 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>アビスコレクション</title>
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>干支転生 UI</title>
 
-  <style>
-    /* --- CSS Style --- */
-    :root {
-      --bg-color: #121212;
-      --panel-color: #1e1e1e;
-      --card-color: #2a2a2a;
-      --text-color: #e0e0e0;
-      --accent-color: #4a90e2;
-      --danger-color: #e74c3c;
-    }
+<style>
+:root{
+  --bg:#F5F6F8;
+  --panel:#FFFFFF;
+  --accent:#4A90E2;
+  --danger:#E94E4E;
+  --text:#222;
+}
 
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      line-height: 1.4;
-    }
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
 
-    .game-container {
-      width: 100%;
-      max-width: 480px;
-      padding: 10px;
-      box-sizing: border-box;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+/* タブ */
+.tabs{
+  display:flex;
+  background:#fff;
+  border-bottom:1px solid #ddd;
+}
+.tab{
+  flex:1;
+  padding:10px;
+  text-align:center;
+  cursor:pointer;
+}
+.tab.active{
+  background:var(--accent);
+  color:#fff;
+}
 
-    /* ステータス周り */
-    .status-panel { margin-top: 10px; }
-    .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .status-card {
-      background: var(--card-color);
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #444;
-    }
-    .status-card-label { font-size: 10px; color: #888; font-weight: bold; }
+/* 画面 */
+.screen{
+  display:none;
+  padding:10px;
+}
+.screen.active{
+  display:block;
+}
 
-    /* アクションボタン */
-    .action-panel { margin-top: 15px; }
-    .action-row { display: flex; gap: 8px; margin-bottom: 8px; }
-    button {
-      cursor: pointer;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      transition: opacity 0.2s;
-    }
-    button:active { opacity: 0.7; }
+/* 上部UI */
+.top{
+  background:var(--panel);
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+.bar{
+  height:14px;
+  background:#ddd;
+  border-radius:10px;
+  overflow:hidden;
+  margin:5px 0;
+}
+.fill{
+  height:100%;
+  background:var(--accent);
+}
+.fill.hp{background:#4CAF50;}
+.fill.boss{background:#E94E4E;}
 
-    .action-row-attack button {
-      width: 100%;
-      padding: 16px;
-      background: var(--accent-color);
-      color: white;
-      font-size: 18px;
-    }
+.stats{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+}
 
-    .main-nav-btn {
-      flex: 1;
-      padding: 12px;
-      background: #333;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+/* 戦闘エリア */
+.battle{
+  height:250px;
+  background:#fff;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden;
+}
 
-    .sub-nav-btn {
-      flex: 1;
-      padding: 8px;
-      background: #222;
-      color: #ccc;
-      font-size: 12px;
-    }
+/* ダメージ */
+.dmg{
+  position:absolute;
+  font-weight:bold;
+  animation:pop 0.6s ease-out forwards;
+}
+@keyframes pop{
+  0%{opacity:1;transform:translateY(0);}
+  100%{opacity:0;transform:translateY(-40px);}
+}
 
-    /* ログ */
-    .log-panel {
-      flex-grow: 1;
-      height: 120px;
-      overflow-y: auto;
-      background: #000;
-      padding: 10px;
-      font-size: 12px;
-      border-radius: 6px;
-      margin-top: 10px;
-      border: 1px solid #333;
-    }
+/* 下部操作 */
+.controls{
+  display:flex;
+  justify-content:space-between;
+  margin-top:10px;
+}
+.btn{
+  flex:1;
+  margin:5px;
+  padding:15px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+}
+.btn.dodge{background:#666;}
+.btn:active{transform:scale(0.95);}
 
-    /* モーダル */
-    .book-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.85);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    .hidden { display: none !important; }
+/* 右側情報（簡易） */
+.side{
+  margin-top:10px;
+  font-size:12px;
+  background:#fff;
+  padding:10px;
+  border-radius:10px;
+}
 
-    .book-modal {
-      background: var(--panel-color);
-      width: 90%;
-      max-height: 85%;
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .book-header {
-      padding: 15px;
-      background: #252525;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: bold;
-    }
-    .panel-modal-body { padding: 15px; overflow-y: auto; flex-grow: 1; }
-
-    /* 経験値バー */
-    #expContainer {
-      width: 100%; height: 6px; background: #333;
-      border-radius: 3px; margin-top: 4px; overflow: hidden;
-    }
-    #expBar { width: 0%; height: 100%; background: #4caf50; transition: width 0.3s; }
-
-    .level-floor-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; }
-  </style>
+/* カード */
+.card{
+  background:#fff;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+</style>
 </head>
+
 <body>
-  <div class="game-container">
-    <div class="title-area">
-      <div class="floor-jump">
-        <select id="floorJumpSelect"><option>B1F</option></select>
-        <button id="floorJumpBtn" style="padding:2px 8px;">移動</button>
-        <label class="stay-label" style="font-size:12px; margin-left:5px;">
-          <input type="checkbox" id="stayOnFloorChk"> とどまる
-        </label>
-      </div>
-    </div>
 
-    <div id="playerLevelExp">
-      <div class="level-floor-row">
-        <span id="playerLevel">Lv.1</span>
-        <span id="floorDisplay">地下1階</span>
-      </div>
-      <div id="expContainer">
-        <div id="expBar"></div>
-      </div>
-    </div>
+<!-- タブ -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">戦闘</div>
+  <div class="tab" onclick="switchTab(1)">ビルド</div>
+  <div class="tab" onclick="switchTab(2)">転生</div>
+  <div class="tab" onclick="switchTab(3)">装備</div>
+</div>
 
-    <div class="status-panel">
-      <div class="status-grid">
-        <div class="player-status status-card">
-          <div class="status-card-label">PLAYER</div>
-          <p id="playerHp" style="margin:4px 0;">HP: 100/100</p>
-          <p id="playerAttack" style="margin:4px 0;">ATK: 10</p>
-        </div>
-        <div class="enemy-status status-card">
-          <div class="enemy-name-row">
-            <span class="status-card-label">ENEMY</span>
-            <p id="enemyName" style="margin:4px 0; color:#ffb74d;">スライム</p>
-          </div>
-          <p id="enemyHp" style="margin:4px 0;">HP: 20/20</p>
-        </div>
-      </div>
-    </div>
+<!-- 戦闘 -->
+<div class="screen active">
 
-    <div class="action-panel">
-      <div class="action-row action-row-attack">
-        <button id="attackBtn">攻撃</button>
-      </div>
-      <div class="action-row action-row-main">
-        <button id="petToggleBtn" class="main-nav-btn">
-          <span class="nav-icon">🐾</span><span class="nav-label">ペット</span>
-        </button>
-        <button id="inventoryToggleBtn" class="main-nav-btn">
-          <span class="nav-icon">📦</span><span class="nav-label">装備</span>
-        </button>
-      </div>
-      <div class="action-row action-row-sub">
-        <button id="bookBtn" class="sub-nav-btn">📖 図鑑</button>
-        <button id="statusBtn" class="sub-nav-btn">📊 状態</button>
-        <button id="moreBtn" class="sub-nav-btn">⋯ その他</button>
-      </div>
-    </div>
+  <div class="top">
+    <div>HP</div>
+    <div class="bar"><div id="hp" class="fill hp" style="width:80%"></div></div>
 
-    <div id="log" class="log-panel"></div>
-  </div>
+    <div>BOSS</div>
+    <div class="bar"><div id="boss" class="fill boss" style="width:100%"></div></div>
 
-  <div id="genericOverlay" class="book-overlay hidden">
-    <div class="book-modal">
-      <div class="book-header">
-        <span id="modalTitle">情報</span>
-        <button id="modalCloseBtn" style="background:none; color:white; font-size:20px;">✕</button>
-      </div>
-      <div class="panel-modal-body" id="modalContent">
-        </div>
+    <div class="stats">
+      <div>COMBO ×<span id="combo">0</span></div>
+      <div>TOTAL ×<span id="multi">1.0</span></div>
     </div>
   </div>
 
-  <script>
-    /* --- JavaScript Logic --- */
-    
-    // ゲームデータ
-    const game = {
-      player: { lv: 1, exp: 0, nextExp: 100, hp: 100, maxHp: 100, atk: 10 },
-      enemy: { name: "深淵のスライム", hp: 20, maxHp: 20, atk: 5, exp: 40 },
-      floor: 1,
-      logCount: 0
-    };
+  <div class="battle" id="battle">
+    戦闘エリア
+  </div>
 
-    // DOM要素
-    const el = {
-      attackBtn: document.getElementById('attackBtn'),
-      log: document.getElementById('log'),
-      pLevel: document.getElementById('playerLevel'),
-      pExp: document.getElementById('expBar'),
-      pHp: document.getElementById('playerHp'),
-      pAtk: document.getElementById('playerAttack'),
-      eName: document.getElementById('enemyName'),
-      eHp: document.getElementById('enemyHp'),
-      floor: document.getElementById('floorDisplay'),
-      overlay: document.getElementById('genericOverlay'),
-      modalTitle: document.getElementById('modalTitle'),
-      modalContent: document.getElementById('modalContent'),
-      modalClose: document.getElementById('modalCloseBtn')
-    };
+  <div class="controls">
+    <button class="btn dodge" onclick="dodge()">回避</button>
+    <button class="btn" onclick="skill()">スキル</button>
+  </div>
 
-    // ログ表示
-    function addLog(msg, color = "#fff") {
-      const p = document.createElement('div');
-      p.style.color = color;
-      p.textContent = `> ${msg}`;
-      el.log.prepend(p);
-      if (el.log.childNodes.length > 30) el.log.lastChild.remove();
-    }
+  <div class="side">
+    干支×2.0<br>
+    装備×1.5<br>
+    条件×3.2
+  </div>
 
-    // UI更新
-    function updateUI() {
-      el.pLevel.textContent = `Lv.${game.player.lv}`;
-      el.floor.textContent = `地下${game.floor}階`;
-      el.pHp.textContent = `HP: ${game.player.hp} / ${game.player.maxHp}`;
-      el.pAtk.textContent = `ATK: ${game.player.atk}`;
-      el.eName.textContent = game.enemy.name;
-      el.eHp.textContent = `HP: ${game.enemy.hp} / ${game.enemy.maxHp}`;
-      
-      const expPercent = (game.player.exp / game.player.nextExp) * 100;
-      el.pExp.style.width = `${expPercent}%`;
-    }
+</div>
 
-    // 敵の生成
-    function spawnEnemy() {
-      game.enemy.maxHp = 20 + (game.floor * 10);
-      game.enemy.hp = game.enemy.maxHp;
-      game.enemy.atk = 5 + (game.floor * 2);
-      game.enemy.exp = 30 + (game.floor * 10);
-      addLog(`地下${game.floor}階で ${game.enemy.name} が現れた！`);
-      updateUI();
-    }
+<!-- ビルド -->
+<div class="screen">
+  <div class="card">
+    <h3>現在の干支：ネズミ</h3>
+    分身型ビルド
+  </div>
+</div>
 
-    // 攻撃処理
-    el.attackBtn.addEventListener('click', () => {
-      // プレイヤーのターン
-      const pDmg = game.player.atk;
-      game.enemy.hp -= pDmg;
-      addLog(`${game.enemy.name}に ${pDmg} のダメージ！`, "#4a90e2");
+<!-- 転生 -->
+<div class="screen">
+  <div class="card">
+    転生回数：10<br>
+    総合倍率：×1.5
+  </div>
+</div>
 
-      if (game.enemy.hp <= 0) {
-        addLog(`${game.enemy.name}を倒した！ ${game.enemy.exp}の経験値を獲得。`, "#4caf50");
-        gainExp(game.enemy.exp);
-        if (!document.getElementById('stayOnFloorChk').checked) {
-          game.floor++;
-        }
-        spawnEnemy();
-        return;
-      }
+<!-- 装備 -->
+<div class="screen">
+  <div class="card">
+    装備一覧（仮）
+  </div>
+</div>
 
-      // 敵のターン
-      const eDmg = game.enemy.atk;
-      game.player.hp -= eDmg;
-      addLog(`${game.enemy.name}の攻撃！ ${eDmg} のダメージを受けた。`, "#e74c3c");
+<script>
+let combo = 0;
 
-      if (game.player.hp <= 0) {
-        addLog("目の前が真っ暗になった...", "#888");
-        game.player.hp = game.player.maxHp;
-        game.floor = Math.max(1, game.floor - 5);
-        spawnEnemy();
-      }
-      updateUI();
-    });
+/* タブ切り替え */
+function switchTab(i){
+  document.querySelectorAll('.tab').forEach((t,idx)=>{
+    t.classList.toggle('active', idx===i);
+  });
+  document.querySelectorAll('.screen').forEach((s,idx)=>{
+    s.classList.toggle('active', idx===i);
+  });
+}
 
-    // 経験値獲得
-    function gainExp(amount) {
-      game.player.exp += amount;
-      if (game.player.exp >= game.player.nextExp) {
-        game.player.lv++;
-        game.player.exp = 0;
-        game.player.nextExp = Math.floor(game.player.nextExp * 1.5);
-        game.player.maxHp += 20;
-        game.player.hp = game.player.maxHp;
-        game.player.atk += 5;
-        addLog(`レベルアップ！ Lv.${game.player.lv} になった！`, "#ffeb3b");
-      }
-    }
+/* ダメージ表示 */
+function spawnDmg(text, color="black"){
+  const el = document.createElement("div");
+  el.className = "dmg";
+  el.innerText = text;
+  el.style.color = color;
+  el.style.left = Math.random()*80 + "%";
+  el.style.top = "50%";
+  document.getElementById("battle").appendChild(el);
+  setTimeout(()=>el.remove(),600);
+}
 
-    // モーダル制御
-    function openModal(title, content) {
-      el.modalTitle.textContent = title;
-      el.modalContent.innerHTML = content;
-      el.overlay.classList.remove('hidden');
-    }
+/* 攻撃（オート代わり） */
+setInterval(()=>{
+  combo++;
+  document.getElementById("combo").innerText = combo;
+  spawnDmg(Math.floor(Math.random()*1000), "black");
+}, 800);
 
-    el.modalClose.onclick = () => el.overlay.classList.add('hidden');
-    
-    document.getElementById('inventoryToggleBtn').onclick = () => openModal("装備", "<p>現在装備している武器はありません。</p>");
-    document.getElementById('petToggleBtn').onclick = () => openModal("ペット", "<p>捕獲したペットはいません。</p>");
-    document.getElementById('statusBtn').onclick = () => openModal("ステータス", `<p>攻撃力: ${game.player.atk}</p><p>最大HP: ${game.player.maxHp}</p>`);
-    document.getElementById('moreBtn').onclick = () => openModal("その他", "<button onclick='location.reload()'>再読み込み</button>");
+/* 回避 */
+function dodge(){
+  spawnDmg("回避!", "blue");
+}
 
-    // 初期化
-    spawnEnemy();
-    addLog("深淵の探求が始まった...");
-  </script>
+/* スキル */
+function skill(){
+  spawnDmg("CRIT!", "red");
+}
+</script>
+
 </body>
 </html>
